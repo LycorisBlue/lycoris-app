@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/screens/home_screen.dart';
+import 'core/routing/app_routes.dart';
 
 void main() {
-  runApp(ProviderScope(child: const MyLifeApp()));
+  runApp(const ProviderScope(child: MyLifeApp()));
 }
 
 class MyLifeApp extends ConsumerWidget {
@@ -17,7 +17,18 @@ class MyLifeApp extends ConsumerWidget {
       designSize: const Size(375, 812),
       minTextAdapt: true,
       builder: (context, child) {
-        return MaterialApp(title: 'MyLife Dashboard', debugShowCheckedModeBanner: false, theme: AppTheme.darkTheme, home: const HomeScreen());
+        return MaterialApp(
+          title: 'Lycoris',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+
+          // Configuration du routing
+          initialRoute: AppRoutes.home,
+          onGenerateRoute: AppRouter.generateRoute,
+
+          // Gestion des routes inconnues
+          onUnknownRoute: (settings) => AppPageRoute(child: const NotFoundScreen()),
+        );
       },
     );
   }
