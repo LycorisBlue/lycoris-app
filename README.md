@@ -1,4 +1,4 @@
-# MyLife Dashboard
+# Lycoris
 
 Application mobile Flutter de productivité personnelle avec interface monochrome (noir/blanc).
 

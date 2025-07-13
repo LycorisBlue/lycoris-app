@@ -58,7 +58,7 @@ class AppTheme {
       ),
 
       // Dividers
-      dividerTheme: DividerThemeData(color: AppColors.divider, thickness: 1),
+      dividerTheme: DividerThemeData(color: AppColors.divider, thickness: .1),
     );
   }
 }
