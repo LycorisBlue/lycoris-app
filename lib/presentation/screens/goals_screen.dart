@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lycoris/presentation/widgets/goals_detail_sheet.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../data/providers/goal_providers.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/goals_create_form.dart';
 
-class GoalsScreen extends StatefulWidget {
+class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
 
   @override
-  State<GoalsScreen> createState() => _GoalsScreenState();
+  ConsumerState<GoalsScreen> createState() => _GoalsScreenState();
 }
 
-class _GoalsScreenState extends State<GoalsScreen> {
+class _GoalsScreenState extends ConsumerState<GoalsScreen> {
   late String _currentTime;
 
   @override
@@ -34,6 +38,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final goalsAsync = ref.watch(goalNotifierProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: const AppDrawer(currentRoute: "goals"),
@@ -65,68 +71,131 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 borderRadius: BorderRadius.circular(AppSizes.borderRadius),
                 border: Border.all(color: AppColors.border, width: 1),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _StatItem(value: '3', label: 'Actifs'),
-                  ),
-                  Container(width: 1, height: 40.h, color: AppColors.border),
-                  Expanded(
-                    child: _StatItem(value: '65%', label: 'Moyen'),
-                  ),
-                  Container(width: 1, height: 40.h, color: AppColors.border),
-                  Expanded(
-                    child: _StatItem(value: '2', label: 'Terminés'),
-                  ),
-                ],
+              child: goalsAsync.when(
+                loading: () => Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'Actifs'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'Moyen'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'Terminés'),
+                    ),
+                  ],
+                ),
+                error: (err, stack) => Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                  ],
+                ),
+                data: (goals) {
+                  final stats = _calculateStats(goals);
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _StatItem(value: stats['active']!, label: 'Actifs'),
+                      ),
+                      Container(width: 1, height: 40.h, color: AppColors.border),
+                      Expanded(
+                        child: _StatItem(value: stats['average']!, label: 'Moyen'),
+                      ),
+                      Container(width: 1, height: 40.h, color: AppColors.border),
+                      Expanded(
+                        child: _StatItem(value: stats['completed']!, label: 'Terminés'),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
             // Liste des objectifs
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.symmetric(horizontal: AppSizes.padding),
-                children: [
-                  _GoalItem(
-                    title: 'Apprendre Flutter',
-                    description: 'Maîtriser le développement mobile',
-                    progress: 0.8,
-                    deadline: 'Dans 2 mois',
-                    icon: Icons.code_outlined,
+              child: goalsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, color: AppColors.textTertiary, size: 48.sp),
+                      SizedBox(height: 16.h),
+                      Text(
+                        'Erreur lors du chargement',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                      ),
+                      SizedBox(height: 8.h),
+                      TextButton(
+                        onPressed: () => ref.refresh(goalNotifierProvider),
+                        child: Text('Réessayer', style: TextStyle(color: AppColors.textPrimary)),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 12.h),
-                  _GoalItem(
-                    title: 'Perdre 5kg',
-                    description: 'Retrouver une forme physique optimale',
-                    progress: 0.6,
-                    deadline: 'Dans 3 semaines',
-                    icon: Icons.fitness_center_outlined,
-                  ),
-                  SizedBox(height: 12.h),
-                  _GoalItem(
-                    title: 'Lire 12 livres',
-                    description: 'Développer mes connaissances',
-                    progress: 0.45,
-                    deadline: 'Fin d\'année',
-                    icon: Icons.book_outlined,
-                  ),
-                  SizedBox(height: 12.h),
-                  _GoalItem(
-                    title: 'Apprendre le piano',
-                    description: 'Jouer mes morceaux préférés',
-                    progress: 0.25,
-                    deadline: 'Dans 6 mois',
-                    icon: Icons.music_note_outlined,
-                  ),
-                  SizedBox(height: 80.h), // Espace pour le FAB
-                ],
+                ),
+                data: (goals) {
+                  if (goals.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.track_changes_outlined, color: AppColors.textTertiary, size: 48.sp),
+                          SizedBox(height: 16.h),
+                          Text(
+                            'Aucun objectif',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textSecondary),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Créez votre premier objectif pour commencer',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textTertiary),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: AppSizes.padding),
+                    itemCount: goals.length,
+                    itemBuilder: (context, index) {
+                      final goal = goals[index];
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 12.h),
+                        child: _GoalItem(
+                          title: goal.title,
+                          description: goal.description,
+                          progress: goal.progress,
+                          deadline: _formatDeadline(goal.deadline),
+                          icon: _getGoalIcon(goal.title),
+                          isCompleted: goal.isCompleted,
+                          isOverdue: goal.isOverdue,
+                          onTap: () => _viewGoalDetails(goal.id),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _addGoal(),
+        onPressed: _addGoal,
         backgroundColor: AppColors.textPrimary,
         foregroundColor: AppColors.background,
         child: const Icon(Icons.add),
@@ -134,9 +203,75 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
   }
 
+  Map<String, String> _calculateStats(List<dynamic> goals) {
+    if (goals.isEmpty) {
+      return {'active': '0', 'average': '0%', 'completed': '0'};
+    }
+
+    final active = goals.where((g) => !g.isCompleted).length;
+    final completed = goals.where((g) => g.isCompleted).length;
+    final avgProgress = goals.map((g) => g.progress).reduce((a, b) => a + b) / goals.length;
+
+    return {'active': active.toString(), 'average': '${(avgProgress * 100).round()}%', 'completed': completed.toString()};
+  }
+
+  String _formatDeadline(DateTime deadline) {
+    final now = DateTime.now();
+    final difference = deadline.difference(now).inDays;
+
+    if (difference < 0) {
+      return 'En retard';
+    } else if (difference == 0) {
+      return 'Aujourd\'hui';
+    } else if (difference == 1) {
+      return 'Demain';
+    } else if (difference < 7) {
+      return 'Dans $difference jours';
+    } else if (difference < 30) {
+      final weeks = (difference / 7).round();
+      return 'Dans $weeks semaine${weeks > 1 ? 's' : ''}';
+    } else {
+      final months = (difference / 30).round();
+      return 'Dans $months mois';
+    }
+  }
+
+  IconData _getGoalIcon(String title) {
+    final titleLower = title.toLowerCase();
+    if (titleLower.contains('flutter') || titleLower.contains('code') || titleLower.contains('dev')) {
+      return Icons.code_outlined;
+    } else if (titleLower.contains('sport') || titleLower.contains('fitness') || titleLower.contains('kg')) {
+      return Icons.fitness_center_outlined;
+    } else if (titleLower.contains('livre') || titleLower.contains('lire') || titleLower.contains('lecture')) {
+      return Icons.book_outlined;
+    } else if (titleLower.contains('piano') || titleLower.contains('musique')) {
+      return Icons.music_note_outlined;
+    } else {
+      return Icons.track_changes_outlined;
+    }
+  }
+
   void _addGoal() {
-    print('Action: Ajouter un nouvel objectif');
-    // Future: Navigation vers formulaire de création
+    showDialog(context: context, builder: (context) => const GoalsCreateForm());
+  }
+
+  void _viewGoalDetails(String goalId) async {
+    // Récupérer l'objectif complet depuis le repository
+    final goal = await ref.read(goalRepositoryProvider).getGoalById(goalId);
+
+    if (goal != null && mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => GoalsDetailSheet(goal: goal),
+      );
+    } else {
+      // Gestion d'erreur si l'objectif n'est pas trouvé
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Objectif introuvable'), backgroundColor: AppColors.textPrimary));
+    }
   }
 }
 
@@ -167,6 +302,9 @@ class _GoalItem extends StatelessWidget {
   final double progress;
   final String deadline;
   final IconData icon;
+  final bool isCompleted;
+  final bool isOverdue;
+  final VoidCallback onTap;
 
   const _GoalItem({
     required this.title,
@@ -174,19 +312,25 @@ class _GoalItem extends StatelessWidget {
     required this.progress,
     required this.deadline,
     required this.icon,
+    required this.isCompleted,
+    required this.isOverdue,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => _viewGoalDetails(),
+      onTap: onTap,
       borderRadius: BorderRadius.circular(AppSizes.borderRadius),
       child: Container(
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(AppSizes.borderRadius),
-          border: Border.all(color: AppColors.border, width: 1),
+          border: Border.all(
+            color: isOverdue && !isCompleted ? AppColors.textPrimary : AppColors.border,
+            width: isOverdue && !isCompleted ? 2 : 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +348,14 @@ class _GoalItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 16.sp)),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontSize: 16.sp,
+                          decoration: isCompleted ? TextDecoration.lineThrough : null,
+                          color: isCompleted ? AppColors.textTertiary : AppColors.textPrimary,
+                        ),
+                      ),
                       SizedBox(height: 2.h),
                       Text(description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary)),
                     ],
@@ -212,25 +363,31 @@ class _GoalItem extends StatelessWidget {
                 ),
                 Text(
                   '${(progress * 100).toInt()}%',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                    color: isCompleted ? AppColors.textTertiary : AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
 
-            SizedBox(height: 16.h),
+            if (!isCompleted) ...[
+              SizedBox(height: 16.h),
 
-            // Barre de progression
-            Container(
-              height: 6.h,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(3.r)),
-              child: FractionallySizedBox(
-                widthFactor: progress,
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  decoration: BoxDecoration(color: AppColors.textPrimary, borderRadius: BorderRadius.circular(3.r)),
+              // Barre de progression
+              Container(
+                height: 6.h,
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(3.r)),
+                child: FractionallySizedBox(
+                  widthFactor: progress,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    decoration: BoxDecoration(color: AppColors.textPrimary, borderRadius: BorderRadius.circular(3.r)),
+                  ),
                 ),
               ),
-            ),
+            ],
 
             SizedBox(height: 12.h),
 
@@ -240,9 +397,27 @@ class _GoalItem extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.schedule_outlined, color: AppColors.textTertiary, size: 14.sp),
+                    Icon(
+                      isCompleted ? Icons.check_circle_outline : Icons.schedule_outlined,
+                      color: isCompleted
+                          ? AppColors.textSecondary
+                          : isOverdue
+                          ? AppColors.textPrimary
+                          : AppColors.textTertiary,
+                      size: 14.sp,
+                    ),
                     SizedBox(width: 4.w),
-                    Text(deadline, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textTertiary)),
+                    Text(
+                      deadline,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: isCompleted
+                            ? AppColors.textSecondary
+                            : isOverdue
+                            ? AppColors.textPrimary
+                            : AppColors.textTertiary,
+                        fontWeight: isOverdue ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
                   ],
                 ),
                 Icon(Icons.chevron_right, color: AppColors.textTertiary, size: 16.sp),
@@ -252,10 +427,5 @@ class _GoalItem extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _viewGoalDetails() {
-    print('Action: Voir détails de l\'objectif');
-    // Future: Navigation vers écran de détail
   }
 }

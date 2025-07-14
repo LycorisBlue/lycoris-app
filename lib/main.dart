@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lycoris/data/services/database_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routing/app_routes.dart';
 
-void main() {
+// Dans main.dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialiser la DB au démarrage
+  await DatabaseService.database;
+
   runApp(const ProviderScope(child: MyLifeApp()));
 }
 
