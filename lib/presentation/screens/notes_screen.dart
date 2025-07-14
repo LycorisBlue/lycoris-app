@@ -321,27 +321,6 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _StatItem({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 28.sp, fontWeight: FontWeight.w300),
-        ),
-        SizedBox(height: 4.h),
-        Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textTertiary)),
-      ],
-    );
-  }
-}
-
 class _NoteItem extends StatelessWidget {
   final _NoteData note;
   final String searchQuery;
