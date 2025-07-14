@@ -3,13 +3,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/routing/app_routes.dart';
 
 class AppDrawer extends StatelessWidget {
-  const AppDrawer({super.key});
+  final String currentRoute;
+
+  const AppDrawer({super.key, required this.currentRoute});
 
   @override
   Widget build(BuildContext context) {
-    // Récupérer la route actuelle
-    final String currentRoute = ModalRoute.of(context)?.settings.name ?? AppRoutes.home;
-
     return Drawer(
       backgroundColor: AppColors.background,
       child: SafeArea(
@@ -24,7 +23,7 @@ class AppDrawer extends StatelessWidget {
                 child: Text(
                   'Lycoris.',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: currentRoute == AppRoutes.home ? AppColors.textPrimary : AppColors.textSecondary,
+                    color: currentRoute == "home" ? AppColors.background : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -38,7 +37,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.dashboard_outlined,
                       title: 'Dashboard',
-                      route: AppRoutes.dashboard,
+                      routeName: "dashboard",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.dashboard),
                     ),
@@ -48,7 +47,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.track_changes_outlined,
                       title: 'Objectifs',
-                      route: AppRoutes.goals,
+                      routeName: "goals",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.goals),
                     ),
@@ -56,7 +55,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.folder_outlined,
                       title: 'Projets',
-                      route: AppRoutes.projects,
+                      routeName: "projects",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.projects),
                     ),
@@ -64,7 +63,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.check_box_outlined,
                       title: 'Tâches',
-                      route: AppRoutes.tasks,
+                      routeName: "tasks",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.tasks),
                     ),
@@ -74,7 +73,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.repeat_outlined,
                       title: 'Habitudes',
-                      route: AppRoutes.habits,
+                      routeName: "habits",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.habits),
                     ),
@@ -82,7 +81,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.book_outlined,
                       title: 'Journal',
-                      route: AppRoutes.journal,
+                      routeName: "journal",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.journal),
                     ),
@@ -92,7 +91,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.note_outlined,
                       title: 'Notes',
-                      route: AppRoutes.notes,
+                      routeName: "notes",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.notes),
                     ),
@@ -100,7 +99,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.notifications_outlined,
                       title: 'Rappels',
-                      route: AppRoutes.reminders,
+                      routeName: "reminders",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.reminders),
                     ),
@@ -110,7 +109,7 @@ class AppDrawer extends StatelessWidget {
                     _DrawerItem(
                       icon: Icons.access_time_outlined,
                       title: 'Outils',
-                      route: AppRoutes.tools,
+                      routeName: "tools",
                       currentRoute: currentRoute,
                       onTap: () => _navigateTo(context, AppRoutes.tools),
                     ),
@@ -125,7 +124,7 @@ class AppDrawer extends StatelessWidget {
             _DrawerItem(
               icon: Icons.settings_outlined,
               title: 'Paramètres',
-              route: AppRoutes.settings,
+              routeName: "settings",
               currentRoute: currentRoute,
               onTap: () => _navigateTo(context, AppRoutes.settings),
             ),
@@ -141,31 +140,31 @@ class AppDrawer extends StatelessWidget {
 
   void _navigateTo(BuildContext context, String route) {
     Navigator.pop(context);
-    AppNavigator.goTo(context, route);
+    Navigator.pushNamed(context, route);
   }
 
   void _navigateToHome(BuildContext context) {
     Navigator.pop(context);
-    AppNavigator.goToHome(context);
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
   }
 }
 
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String route;
+  final String routeName;
   final String currentRoute;
   final VoidCallback onTap;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
-    required this.route,
+    required this.routeName,
     required this.currentRoute,
     required this.onTap,
   });
 
-  bool get isSelected => currentRoute == route;
+  bool get isSelected => currentRoute == routeName;
 
   @override
   Widget build(BuildContext context) {
@@ -175,18 +174,22 @@ class _DrawerItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: isSelected
             ? BoxDecoration(
-                color: AppColors.hover,
-                border: Border(left: BorderSide(color: AppColors.textPrimary, width: 3)),
+                color: AppColors.textPrimary, // Fond blanc pour l'item actif
+                border: Border(left: BorderSide(color: AppColors.background, width: 3)),
               )
             : null,
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? AppColors.textPrimary : AppColors.textSecondary, size: 20),
+            Icon(
+              icon,
+              color: isSelected ? AppColors.background : AppColors.textSecondary, // Icône noire si actif
+              size: 20,
+            ),
             const SizedBox(width: 16),
             Text(
               title,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                color: isSelected ? AppColors.background : AppColors.textSecondary, // Texte noir si actif
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),

@@ -45,7 +45,7 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "journal"),
       appBar: AppBar(
         title: const Text('Journal'),
         actions: [

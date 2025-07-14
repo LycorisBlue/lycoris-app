@@ -38,7 +38,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "tools"),
       appBar: AppBar(
         title: const Text('Outils'),
         actions: [

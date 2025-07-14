@@ -97,7 +97,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "notes"),
       appBar: AppBar(
         title: const Text('Notes'),
         actions: [

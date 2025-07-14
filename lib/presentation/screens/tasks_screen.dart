@@ -46,7 +46,7 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "tasks"),
       appBar: AppBar(
         title: const Text('Tâches'),
         actions: [

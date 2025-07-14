@@ -20,9 +20,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _vibrationsEnabled = true;
   bool _animationsEnabled = true;
   bool _autoBackup = true;
-  String _fontSize = 'Normale';
-  String _userName = 'Utilisateur';
-  String _userEmail = 'user@example.com';
+  final String _fontSize = 'Normale';
+  final String _userName = 'Utilisateur';
+  final String _userEmail = 'user@example.com';
 
   @override
   void initState() {
@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "settings"),
       appBar: AppBar(
         title: const Text('Paramètres'),
         actions: [

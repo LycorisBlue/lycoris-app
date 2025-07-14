@@ -38,7 +38,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "habits"),
       appBar: AppBar(
         title: const Text('Habitudes'),
         actions: [

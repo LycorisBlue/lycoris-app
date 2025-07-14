@@ -56,7 +56,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "reminders"),
       appBar: AppBar(
         title: const Text('Rappels'),
         actions: [

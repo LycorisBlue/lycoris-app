@@ -36,7 +36,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "goals"),
       appBar: AppBar(
         title: const Text('Objectifs'),
         actions: [

@@ -59,7 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-      drawer: const AppDrawer(),
+      drawer: const AppDrawer(currentRoute: "home"),
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
           // Si l'utilisateur glisse de gauche à droite (vitesse positive en x)
