@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lycoris/presentation/widgets/task_create_form.dart';
+import 'package:lycoris/presentation/widgets/task_detail_sheet.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
+import '../../data/providers/task_providers.dart';
+import '../../data/providers/project_providers.dart';
+import '../../domain/entities/task.dart';
 import '../widgets/app_drawer.dart';
 
-enum TaskStatus { todo, inProgress, completed }
-
-class TasksScreen extends StatefulWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  State<TasksScreen> createState() => _TasksScreenState();
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStateMixin {
+class _TasksScreenState extends ConsumerState<TasksScreen> with SingleTickerProviderStateMixin {
   late String _currentTime;
   late TabController _tabController;
 
@@ -44,6 +48,8 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final allTasksAsync = ref.watch(taskNotifierProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: const AppDrawer(currentRoute: "tasks"),
@@ -75,20 +81,38 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
                 borderRadius: BorderRadius.circular(AppSizes.borderRadius),
                 border: Border.all(color: AppColors.border, width: 1),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _StatItem(value: '12', label: 'À faire'),
-                  ),
-                  Container(width: 1, height: 40.h, color: AppColors.border),
-                  Expanded(
-                    child: _StatItem(value: '8', label: 'En cours'),
-                  ),
-                  Container(width: 1, height: 40.h, color: AppColors.border),
-                  Expanded(
-                    child: _StatItem(value: '15', label: 'Terminées'),
-                  ),
-                ],
+              child: allTasksAsync.when(
+                loading: () => Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'À faire'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'En cours'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '-', label: 'Terminées'),
+                    ),
+                  ],
+                ),
+                error: (err, stack) => Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                    Container(width: 1, height: 40.h, color: AppColors.border),
+                    Expanded(
+                      child: _StatItem(value: '!', label: 'Erreur'),
+                    ),
+                  ],
+                ),
+                data: (tasks) => _buildStatsRow(tasks),
               ),
             ),
 
@@ -119,11 +143,15 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
 
             SizedBox(height: 16.h),
 
-            // Liste des tâches
+            // Liste des tâches avec filtres
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [_buildTaskList(_getTodayTasks()), _buildTaskList(_getWeekTasks()), _buildTaskList(_getAllTasks())],
+                children: [
+                  _buildTasksTab(ref.watch(todayTasksProvider), 'aujourd\'hui'),
+                  _buildTasksTab(ref.watch(weekTasksProvider), 'cette semaine'),
+                  _buildTasksTab(allTasksAsync, 'toutes'),
+                ],
               ),
             ),
           ],
@@ -138,7 +166,82 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildTaskList(List<_TaskData> tasks) {
+  Widget _buildStatsRow(List<Task> tasks) {
+    final todoTasks = tasks.where((t) => t.status == TaskStatus.todo).length;
+    final inProgressTasks = tasks.where((t) => t.status == TaskStatus.inProgress).length;
+    final completedTasks = tasks.where((t) => t.status == TaskStatus.completed).length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatItem(value: todoTasks.toString(), label: 'À faire'),
+        ),
+        Container(width: 1, height: 40.h, color: AppColors.border),
+        Expanded(
+          child: _StatItem(value: inProgressTasks.toString(), label: 'En cours'),
+        ),
+        Container(width: 1, height: 40.h, color: AppColors.border),
+        Expanded(
+          child: _StatItem(value: completedTasks.toString(), label: 'Terminées'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTasksTab(AsyncValue<List<Task>> tasksAsync, String tabName) {
+    return tasksAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => _buildErrorState(),
+      data: (tasks) {
+        if (tasks.isEmpty) {
+          return _buildEmptyState(tabName);
+        }
+        return _buildTasksList(tasks);
+      },
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, color: AppColors.textTertiary, size: 48.sp),
+          SizedBox(height: 16.h),
+          Text(
+            'Erreur lors du chargement',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 8.h),
+          TextButton(
+            onPressed: () => ref.refresh(taskNotifierProvider),
+            child: Text('Réessayer', style: TextStyle(color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String tabName) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_box_outlined, color: AppColors.textTertiary, size: 48.sp),
+          SizedBox(height: 16.h),
+          Text('Aucune tâche $tabName', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textSecondary)),
+          SizedBox(height: 8.h),
+          Text(
+            'Créez votre première tâche pour commencer',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textTertiary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTasksList(List<Task> tasks) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: AppSizes.padding),
       itemCount: tasks.length,
@@ -146,105 +249,51 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
         final task = tasks[index];
         return Padding(
           padding: EdgeInsets.only(bottom: 8.h),
-          child: _TaskItem(
-            title: task.title,
-            projectName: task.projectName,
-            goalName: task.goalName,
-            status: task.status,
-            deadline: task.deadline,
-            isUrgent: task.isUrgent,
+          child: _TaskItemWithProject(
+            task: task,
+            onTap: () => _viewTaskDetails(task.id),
             onStatusChanged: (newStatus) => _updateTaskStatus(task, newStatus),
-            onTap: () => _viewTaskDetails(task),
           ),
         );
       },
     );
   }
 
-  List<_TaskData> _getTodayTasks() {
-    return _getAllTasks().where((task) => task.deadline == 'Aujourd\'hui').toList();
+  Future<void> _updateTaskStatus(Task task, TaskStatus newStatus) async {
+    final success = await ref.read(taskNotifierProvider.notifier).updateTaskStatus(task.id, newStatus);
+    if (success) {
+      _showMessage('Statut mis à jour');
+    } else {
+      _showMessage('Erreur lors de la mise à jour');
+    }
   }
 
-  List<_TaskData> _getWeekTasks() {
-    return _getAllTasks()
-        .where((task) => task.deadline == 'Aujourd\'hui' || task.deadline == 'Demain' || task.deadline == 'Dans 2 jours')
-        .toList();
+void _viewTaskDetails(String taskId) async {
+    // Récupérer la tâche complète depuis le repository
+    final task = await ref.read(taskRepositoryProvider).getTaskById(taskId);
+
+    if (task != null && mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => TaskDetailSheet(task: task),
+      );
+    } else {
+      // Gestion d'erreur si la tâche n'est pas trouvée
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Tâche introuvable'), backgroundColor: AppColors.textPrimary));
+    }
   }
 
-  List<_TaskData> _getAllTasks() {
-    return [
-      _TaskData(
-        title: 'Créer interface principale',
-        projectName: 'App TodoList',
-        goalName: 'Apprendre Flutter',
-        status: TaskStatus.inProgress,
-        deadline: 'Aujourd\'hui',
-        isUrgent: true,
-      ),
-      _TaskData(
-        title: 'Acheter équipement fitness',
-        projectName: 'Programme fitness',
-        goalName: 'Perdre 5kg',
-        status: TaskStatus.todo,
-        deadline: 'Aujourd\'hui',
-        isUrgent: true,
-      ),
-      _TaskData(
-        title: 'Implémenter base de données',
-        projectName: 'App TodoList',
-        goalName: 'Apprendre Flutter',
-        status: TaskStatus.todo,
-        deadline: 'Demain',
-        isUrgent: false,
-      ),
-      _TaskData(
-        title: 'Planifier séances sport',
-        projectName: 'Programme fitness',
-        goalName: 'Perdre 5kg',
-        status: TaskStatus.inProgress,
-        deadline: 'Dans 2 jours',
-        isUrgent: false,
-      ),
-      _TaskData(
-        title: 'Configurer projet Flutter',
-        projectName: 'App TodoList',
-        goalName: 'Apprendre Flutter',
-        status: TaskStatus.completed,
-        deadline: 'Hier',
-        isUrgent: false,
-      ),
-      _TaskData(
-        title: 'Choisir premier livre',
-        projectName: 'Setup lecture',
-        goalName: 'Lire 12 livres',
-        status: TaskStatus.completed,
-        deadline: 'Il y a 2 jours',
-        isUrgent: false,
-      ),
-      _TaskData(
-        title: 'Rechercher professeur piano',
-        projectName: 'Recherche piano',
-        goalName: 'Apprendre le piano',
-        status: TaskStatus.todo,
-        deadline: 'Cette semaine',
-        isUrgent: false,
-      ),
-    ];
+void _addTask() {
+    showDialog(context: context, builder: (context) => const TaskCreateForm());
   }
 
-  void _updateTaskStatus(_TaskData task, TaskStatus newStatus) {
-    print('Mise à jour statut tâche: ${task.title} → $newStatus');
-    // Future: Mise à jour en base de données
-  }
-
-  void _viewTaskDetails(_TaskData task) {
-    print('Voir détails tâche: ${task.title}');
-    // Future: Navigation vers écran de détail
-  }
-
-  void _addTask() {
-    print('Action: Ajouter une nouvelle tâche');
-    // Future: Navigation vers formulaire de création avec sélection de projet
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.textSecondary));
   }
 }
 
@@ -269,25 +318,47 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+class _TaskItemWithProject extends ConsumerWidget {
+  final Task task;
+  final VoidCallback onTap;
+  final Function(TaskStatus) onStatusChanged;
+
+  const _TaskItemWithProject({required this.task, required this.onTap, required this.onStatusChanged});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projectAsync = ref.watch(projectsByGoalProvider(''));
+
+    return FutureBuilder(
+      future: ref.read(projectRepositoryProvider).getProjectById(task.projectId),
+      builder: (context, projectSnapshot) {
+        final project = projectSnapshot.data;
+
+        return _TaskItem(
+          task: task,
+          projectName: project?.title ?? 'Projet inconnu',
+          goalName: 'Objectif lié', // Future: récupérer via project.goalId
+          onTap: onTap,
+          onStatusChanged: onStatusChanged,
+        );
+      },
+    );
+  }
+}
+
 class _TaskItem extends StatelessWidget {
-  final String title;
+  final Task task;
   final String projectName;
   final String goalName;
-  final TaskStatus status;
-  final String deadline;
-  final bool isUrgent;
-  final Function(TaskStatus) onStatusChanged;
   final VoidCallback onTap;
+  final Function(TaskStatus) onStatusChanged;
 
   const _TaskItem({
-    required this.title,
+    required this.task,
     required this.projectName,
     required this.goalName,
-    required this.status,
-    required this.deadline,
-    required this.isUrgent,
-    required this.onStatusChanged,
     required this.onTap,
+    required this.onStatusChanged,
   });
 
   @override
@@ -338,7 +409,7 @@ class _TaskItem extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (isUrgent && status != TaskStatus.completed)
+                if (task.isUrgent && !task.isCompleted)
                   Container(
                     width: 6.w,
                     height: 6.w,
@@ -354,15 +425,15 @@ class _TaskItem extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: () => _cycleStatus(),
-                  child: _TaskCheckbox(status: status),
+                  child: _TaskCheckbox(status: task.status),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Text(
-                    title,
+                    task.title,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      decoration: status == TaskStatus.completed ? TextDecoration.lineThrough : null,
-                      color: _getStatusColor(),
+                      decoration: task.status == TaskStatus.completed ? TextDecoration.lineThrough : null,
+                      color: _getStatusColor(context),
                     ),
                   ),
                 ),
@@ -380,10 +451,10 @@ class _TaskItem extends StatelessWidget {
                     Icon(_getDeadlineIcon(), color: _getDeadlineColor(), size: 12.sp),
                     SizedBox(width: 4.w),
                     Text(
-                      deadline,
+                      _formatDeadline(),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: _getDeadlineColor(),
-                        fontWeight: isUrgent ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: task.isUrgent ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -398,7 +469,7 @@ class _TaskItem extends StatelessWidget {
   }
 
   void _cycleStatus() {
-    switch (status) {
+    switch (task.status) {
       case TaskStatus.todo:
         onStatusChanged(TaskStatus.inProgress);
         break;
@@ -411,8 +482,8 @@ class _TaskItem extends StatelessWidget {
     }
   }
 
-  Color _getStatusColor() {
-    switch (status) {
+  Color _getStatusColor(BuildContext context) {
+    switch (task.status) {
       case TaskStatus.todo:
         return AppColors.textSecondary;
       case TaskStatus.inProgress:
@@ -423,13 +494,32 @@ class _TaskItem extends StatelessWidget {
   }
 
   Color _getDeadlineColor() {
-    if (status == TaskStatus.completed) return AppColors.textTertiary;
-    return isUrgent ? AppColors.textPrimary : AppColors.textTertiary;
+    if (task.status == TaskStatus.completed) return AppColors.textTertiary;
+    return task.isUrgent ? AppColors.textPrimary : AppColors.textTertiary;
   }
 
   IconData _getDeadlineIcon() {
-    if (status == TaskStatus.completed) return Icons.check_circle_outline;
+    if (task.status == TaskStatus.completed) return Icons.check_circle_outline;
     return Icons.schedule_outlined;
+  }
+
+  String _formatDeadline() {
+    if (task.deadline == null) return 'Pas d\'échéance';
+
+    final now = DateTime.now();
+    final difference = task.deadline!.difference(now).inDays;
+
+    if (difference < 0) {
+      return 'En retard';
+    } else if (difference == 0) {
+      return 'Aujourd\'hui';
+    } else if (difference == 1) {
+      return 'Demain';
+    } else if (difference < 7) {
+      return 'Dans $difference jours';
+    } else {
+      return 'Dans ${(difference / 7).round()} semaines';
+    }
   }
 }
 
@@ -483,22 +573,4 @@ class _TaskCheckbox extends StatelessWidget {
         return Icon(Icons.check, color: AppColors.background, size: 14.sp);
     }
   }
-}
-
-class _TaskData {
-  final String title;
-  final String projectName;
-  final String goalName;
-  final TaskStatus status;
-  final String deadline;
-  final bool isUrgent;
-
-  _TaskData({
-    required this.title,
-    required this.projectName,
-    required this.goalName,
-    required this.status,
-    required this.deadline,
-    required this.isUrgent,
-  });
 }

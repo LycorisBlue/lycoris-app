@@ -122,3 +122,9 @@ final goalNotifierProvider = StateNotifierProvider<GoalNotifier, AsyncValue<List
   final repository = ref.read(goalRepositoryProvider);
   return GoalNotifier(repository);
 });
+
+/// Provider pour récupérer un objectif par son ID
+final goalByIdProvider = FutureProvider.family<Goal?, String>((ref, goalId) async {
+  final repository = ref.read(goalRepositoryProvider);
+  return repository.getGoalById(goalId);
+});
